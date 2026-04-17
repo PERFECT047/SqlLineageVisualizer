@@ -1,5 +1,6 @@
 package org.perfect047.sqllineagevisualizer.service.strategy.impl;
 
+import org.perfect047.sqllineagevisualizer.infrastructure.kroki.KrokiClient;
 import org.perfect047.sqllineagevisualizer.model.SchemaMetadata;
 import org.perfect047.sqllineagevisualizer.port.VisualizerStrategy;
 import org.perfect047.sqllineagevisualizer.service.VisualizerType;
@@ -23,13 +24,22 @@ public class KrokiD2Strategy implements VisualizerStrategy {
         StringBuilder sb = new StringBuilder();
 
         metadata.getTables().forEach((name, table) -> {
+
             sb.append(name).append(": {\n");
 
-            table.getColumns().forEach(c ->
-                    sb.append("  ").append(c.getName()).append("\n")
-            );
+            table.getColumns().forEach(c -> {
+                String prefix = "";
 
-            sb.append("}\n\n");
+                if (c.isPrimaryKey()) prefix = "PK ";
+                else if (c.isForeignKey()) prefix = "FK ";
+
+                sb.append("  ")
+                        .append(prefix)
+                        .append(c.getName())
+                        .append("\n");
+            });
+
+            sb.append("}\n");
         });
 
         metadata.getRelationships().forEach(r ->
@@ -39,18 +49,6 @@ public class KrokiD2Strategy implements VisualizerStrategy {
                         .append("\n")
         );
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-
-        HttpEntity<String> request = new HttpEntity<>(sb.toString(), headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                "https://kroki.io/d2/svg",
-                HttpMethod.POST,
-                request,
-                String.class
-        );
-
-        return response.getBody();
+        return KrokiClient.render(sb.toString(), "d2");
     }
 }

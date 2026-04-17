@@ -22,27 +22,54 @@ public class KrokiGraphvizStrategy implements VisualizerStrategy {
 
         StringBuilder sb = new StringBuilder();
         sb.append("digraph G {\n");
-
-        sb.append("rankdir=LR;\n");
-        sb.append("splines=ortho;\n");
-        sb.append("nodesep=0.6;\n");
-        sb.append("ranksep=1.2;\n");
-
-        sb.append("node [shape=record, style=filled, fillcolor=\"#E3F2FD\", fontname=\"Helvetica\"];\n");
-        sb.append("edge [color=\"#555555\"];\n");
+        sb.append("node [fontname=\"DejaVu Sans\"];\n");
+        sb.append("rankdir=TB;\n");
+        sb.append("nodesep=0.4;\n");
+        sb.append("ranksep=0.6;\n");
+        sb.append("splines=ortho;\n");  // cleaner edges
+        sb.append("concentrate=true;\n"); // merge edges
+        sb.append("node [margin=0.05];\n");
+        sb.append("ratio=compress;\n");
+        sb.append("node [shape=plaintext];\n");
+        sb.append("edge [color=\"#f87171\"];\n");
 
         metadata.getTables().forEach((name, table) -> {
 
             String safeName = sanitize(name);
 
-            sb.append(safeName).append(" [label=\"{")
-                    .append(safeName).append("|");
+            sb.append(safeName).append(" [label=<\n");
+            sb.append("<TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\">\n");
 
+// 🔷 Table name
+            sb.append("<TR><TD BGCOLOR=\"#60a5fa\"><B>")
+                    .append(safeName)
+                    .append("</B></TD></TR>\n");
+
+// 🔷 Columns
             table.getColumns().forEach(c -> {
-                sb.append(sanitize(c.getName())).append("\\l");
+
+                String col = sanitize(c.getName());
+
+                String color = "#4d4d4d";
+                String prefix = "";
+
+                if (c.isPrimaryKey()) {
+                    prefix = "[PK] ";
+                    color = "#facc15"; // yellow
+                } else if (c.isForeignKey()) {
+                    prefix = "[FK] ";
+                    color = "#f87171"; // red
+                }
+
+                sb.append("<TR><TD ALIGN=\"LEFT\"><FONT COLOR=\"")
+                        .append(color)
+                        .append("\">")
+                        .append(prefix)
+                        .append(col)
+                        .append("</FONT></TD></TR>\n");
             });
 
-            sb.append("}\"];\n");
+            sb.append("</TABLE>\n>];\n");
         });
 
         metadata.getRelationships().forEach(r -> {

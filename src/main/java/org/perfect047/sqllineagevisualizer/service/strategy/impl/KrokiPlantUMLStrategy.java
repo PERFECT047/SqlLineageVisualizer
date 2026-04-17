@@ -1,5 +1,6 @@
 package org.perfect047.sqllineagevisualizer.service.strategy.impl;
 
+import org.perfect047.sqllineagevisualizer.infrastructure.kroki.KrokiClient;
 import org.perfect047.sqllineagevisualizer.model.SchemaMetadata;
 import org.perfect047.sqllineagevisualizer.port.VisualizerStrategy;
 import org.perfect047.sqllineagevisualizer.service.VisualizerType;
@@ -20,44 +21,38 @@ public class KrokiPlantUMLStrategy implements VisualizerStrategy {
 
     @Override
     public String generateImageUrl(SchemaMetadata metadata) {
-        StringBuilder sb = new StringBuilder("@startuml\nskinparam linetype polyline\n");
+
+        StringBuilder sb = new StringBuilder("@startuml\n");
 
         metadata.getTables().forEach((name, table) -> {
             sb.append("entity ").append(name).append(" {\n");
-            table.getColumns().forEach(c ->
-                    sb.append("  ").append(c.getName())
-                            .append(" : ").append(c.getType()).append("\n")
-            );
+
+            table.getColumns().forEach(c -> {
+                String prefix = "";
+
+                if (c.isPrimaryKey()) prefix = "* ";
+                else if (c.isForeignKey()) prefix = "+ ";
+
+                sb.append("  ")
+                        .append(prefix)
+                        .append(c.getName())
+                        .append(" : ")
+                        .append(c.getType())
+                        .append("\n");
+            });
+
             sb.append("}\n");
         });
 
         metadata.getRelationships().forEach(r ->
-                sb.append(String.format("%s --o{ %s\n",
-                        r.getFromTable(),
-                        r.getToTable()
-                ))
+                sb.append(r.getFromTable())
+                        .append(" ||--o{ ")
+                        .append(r.getToTable())
+                        .append("\n")
         );
 
         sb.append("@enduml");
 
-        String krokiUrl = "https://kroki.io/plantuml/svg";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-
-        HttpEntity<String> request = new HttpEntity<>(sb.toString(), headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                krokiUrl,
-                HttpMethod.POST,
-                request,
-                String.class
-        );
-
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Kroki failed: " + response.getStatusCode());
-        }
-
-        return response.getBody(); // SVG content
+        return KrokiClient.render(sb.toString(), "plantuml");
     }
 }

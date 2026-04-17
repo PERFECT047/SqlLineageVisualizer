@@ -14,19 +14,4 @@ public class VisualizerController {
 
     @GetMapping("/")
     public String index() { return "index"; }
-
-    @GetMapping("/visualize")
-    public String redirectToHome() {
-        return "redirect:/";
-    }
-
-    @PostMapping("/visualize")
-    @ResponseBody
-    public String visualize(@RequestBody DbRequest request) {
-        try {
-            return visualizerService.generateSvg(request);
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
-        }
-    }
 }
