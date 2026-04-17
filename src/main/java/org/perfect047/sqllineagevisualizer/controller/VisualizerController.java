@@ -15,15 +15,18 @@ public class VisualizerController {
     @GetMapping("/")
     public String index() { return "index"; }
 
+    @GetMapping("/visualize")
+    public String redirectToHome() {
+        return "redirect:/";
+    }
+
     @PostMapping("/visualize")
-    public String visualize(@ModelAttribute DbRequest request, Model model) {
+    @ResponseBody
+    public String visualize(@RequestBody DbRequest request) {
         try {
-            String url = visualizerService.getVisualizedUrl(request);
-            model.addAttribute("imageUrl", url);
-            model.addAttribute("success", true);
+            return visualizerService.generateSvg(request);
         } catch (Exception e) {
-            model.addAttribute("error", e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
-        return "index";
     }
 }
