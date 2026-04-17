@@ -15,9 +15,16 @@ public class VisualizerService {
     private final SchemaExtractor extractor;
     private final VisualizerStrategyFactory strategyFactory;
 
-    public String getVisualizedUrl(DbRequest request) throws Exception {
-        SchemaMetadata metadata = extractor.extract(request.getUrl(), request.getUsername(), request.getPassword());
-        VisualizerStrategy strategy = strategyFactory.getStrategy(request.getVisualizerType());
+    public String generateSvg(DbRequest request) throws Exception {
+        SchemaMetadata metadata = extractor.extract(
+                request.getUrl(),
+                request.getUsername(),
+                request.getPassword()
+        );
+
+        VisualizerStrategy strategy =
+                strategyFactory.getStrategy(request.getVisualizerType());
+
         return strategy.generateImageUrl(metadata);
     }
 }
