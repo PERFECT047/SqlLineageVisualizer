@@ -11,32 +11,62 @@ import java.util.*;
 
 @Component
 public class JdbcSchemaExtractor implements SchemaExtractor {
+
     @Override
     public SchemaMetadata extract(String url, String user, String pass) throws Exception {
+
         Map<String, TableInfo> tables = new HashMap<>();
         List<SchemaMetadata.Relationship> relationships = new ArrayList<>();
 
+        String dbName = extractDbName(url);
+
         try (Connection conn = DriverManager.getConnection(url, user, pass)) {
+
             DatabaseMetaData meta = conn.getMetaData();
-            ResultSet rsTables = meta.getTables(null, null, "%", new String[]{"TABLE"});
+
+            ResultSet rsTables = meta.getTables(dbName, null, "%", new String[]{"TABLE"});
 
             while (rsTables.next()) {
                 String tableName = rsTables.getString("TABLE_NAME");
+
                 List<ColumnInfo> columns = new ArrayList<>();
-                ResultSet rsCols = meta.getColumns(null, null, tableName, null);
+
+                ResultSet rsCols = meta.getColumns(dbName, null, tableName, null);
+
                 while (rsCols.next()) {
-                    columns.add(new ColumnInfo(rsCols.getString("COLUMN_NAME"), rsCols.getString("TYPE_NAME")));
+                    columns.add(new ColumnInfo(
+                            rsCols.getString("COLUMN_NAME"),
+                            rsCols.getString("TYPE_NAME")
+                    ));
                 }
+
                 tables.put(tableName, new TableInfo(tableName, columns));
             }
 
             for (String table : tables.keySet()) {
-                ResultSet rsFk = meta.getImportedKeys(null, null, table);
+                ResultSet rsFk = meta.getImportedKeys(dbName, null, table);
+
                 while (rsFk.next()) {
-                    relationships.add(new SchemaMetadata.Relationship(rsFk.getString("PKTABLE_NAME"), rsFk.getString("FKTABLE_NAME")));
+                    relationships.add(new SchemaMetadata.Relationship(
+                            rsFk.getString("PKTABLE_NAME"),
+                            rsFk.getString("FKTABLE_NAME")
+                    ));
                 }
             }
+
+            SchemaMetadata raw = new SchemaMetadata(tables, relationships);
+            return SchemaEnricher.enrich(raw, conn, dbName);
         }
-        return new SchemaMetadata(tables, relationships);
+    }
+
+    private String extractDbName(String url) {
+        String[] parts = url.split("/");
+        String dbPart = parts[parts.length - 1];
+
+        if (dbPart.contains("?")) {
+            dbPart = dbPart.substring(0, dbPart.indexOf("?"));
+        }
+
+        return dbPart;
     }
 }
